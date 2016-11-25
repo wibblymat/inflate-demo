@@ -21,7 +21,14 @@ class InflateWasm {
     let ptr = 0;
     const imports = {
       env: {
-        readInputByte: () => input[ptr++],
+        // Read up to size bytes into the buffer at buf
+        readInput: (buf, size) => {
+          const mem = new Uint8Array(this.instance.exports.memory.buffer, buf, size);
+          const bytes = Math.min(size, input.length - ptr);
+          mem.set(input.slice(ptr, ptr + bytes));
+          ptr += bytes;
+          return bytes;
+        },
         error: addr => {
           const decoder = new TextDecoder('utf-8');
           let end = addr;

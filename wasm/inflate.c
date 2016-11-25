@@ -15,12 +15,14 @@ typedef char bool;
 typedef unsigned char byte;
 #define true (bool)1;
 #define false (bool)0;
+#define BUFFER_SIZE 32768
 
-byte readInputByte();
 void error(char*);
+int readInput(byte*, int);
 
 int CL_ORDER[] = {16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15};
-int BUFFER_SIZE = 32768;
+byte* output;
+byte* input;
 
 typedef struct Tree {
   struct Tree* left;
@@ -29,10 +31,11 @@ typedef struct Tree {
 } Tree;
 
 bool complete = false;
-byte* output;
 int currentBits = 0;
 int bitsLeft = 0;
 int writePos = 0;
+int inputPos = 0;
+int inputRemaining = 0;
 
 int blockType = 0;
 bool blockFinal = false;
@@ -122,6 +125,18 @@ int getBufferSize() {
 
 byte* getOutputBuffer() {
   return output;
+}
+
+byte readInputByte() {
+  if (inputRemaining == 0) {
+    inputRemaining = readInput(input, BUFFER_SIZE);
+    inputPos = 0;
+  }
+  if (inputRemaining == 0) {
+    error("Ran out of input bytes");
+  }
+  inputRemaining--;
+  return input[inputPos++];
 }
 
 int readBits(int count) {
@@ -287,6 +302,7 @@ int codeToDistance(int code) {
 
 void init() {
   output = malloc(BUFFER_SIZE);
+  input = malloc(BUFFER_SIZE);
 
   byte cmf = readInputByte();
   byte method = cmf & 0xF;
@@ -333,6 +349,7 @@ int readValues() {
         // freeTree(blockLengthTree);
         // freeTree(blockDistTree);
         // free(output);
+        // free(input);
         return writePos;
       }
       initBlock();
