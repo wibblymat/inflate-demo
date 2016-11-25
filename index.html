@@ -37,7 +37,7 @@
           width: 80%;
           max-width: 600px;
           margin: 0px auto;
-          padding: 20px;
+          padding: 0px 20px;
           border: 4px red solid;
         }
       </style>
@@ -47,9 +47,13 @@
     <p>This demo shows the benefits of using Web Assembly for CPU-intensive tasks, in this case decompression of DEFLATE compressed data.</p>
     <p>The two buttons below will both decompress a DEFLATE compressed copy of the novel 'The War of the Worlds' and display the output. One will use a pure JavaScript implementation of the algorithm, and the other a Web Assembly version.</p>
     <div id="error" class="error" style="display: none;">
-      Your browser does not support the latest version of Web Assembly, so the demo will not work.
+      <p>Your browser does not support the latest version of Web Assembly, so the demo will not work.</p>
+
+      <p>Try Chrome Canary with the flag (chrome://flags/#enable-webassembly) turned on.</p>
     </div>
     <script>
+      // The only way I know of to detect that we support the correct
+      // experimental binary version, now that Wasm.experimentalVersion is gone.
       const canaryModule = new Uint8Array([
         0x00, 0x61, 0x73, 0x6d, 0x0d, 0x00, 0x00, 0x00
       ]);
