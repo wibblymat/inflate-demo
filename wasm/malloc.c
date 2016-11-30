@@ -85,7 +85,6 @@ int allocated_pages = 1;
 unsigned grow_memory(unsigned delta) {
   int result;
   asm("grow_memory %0=, %1" : "=r"(result) : "r"(delta) : "memory");
-  result = allocated_pages;
   allocated_pages += delta;
   return result;
 }
