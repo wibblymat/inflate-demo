@@ -1,0 +1,3 @@
+wasm/*.ll
+wasm/*.s
+wasm/*.wast
