@@ -40,6 +40,17 @@
           padding: 0px 20px;
           border: 4px red solid;
         }
+
+        .stats-table {
+          border-collapse: collapse;
+        }
+
+        .stats-table td {
+          border: 1px solid black;
+          margin: 0;
+          padding 5px;
+          min-width: 100px;
+        }
       </style>
   </head>
   <body>
@@ -64,11 +75,43 @@
         document.getElementById('error').style.display = 'block';
       }
     </script>
-    <button disabled id="js">Decompress (JavaScript)</button>
-    <button disabled id="wasm">Decompress (Web Assembly)</button>
+    <div>
+      <button disabled id="js">Decompress (JavaScript)</button>
+      <button disabled id="wasm">Decompress (Web Assembly)</button>
+    </div>
+    <div>
+      <button disabled id="js1000">Decompress (JavaScript) x 1000</button>
+      <button disabled id="wasm1000">Decompress (Web Assembly) x 1000</button>
+    </div>
 
-    <div>Time taken (JS): <span id="js-timer"></span></div>
-    <div>Time taken (WASM): <span id="wasm-timer"></span></div>
+    <h3>Stats</h3>
+    <table class="stats-table">
+      <tr>
+        <th>&nbsp;</th>
+        <th>JS</th>
+        <th>WASM</th>
+      </tr>
+      <tr>
+        <th>First run (ms)</th>
+        <td id="js-first"></td>
+        <td id="wasm-first"></td>
+      </tr>
+      <tr>
+        <th>Last run (ms)</th>
+        <td id="js-last"></td>
+        <td id="wasm-last"></td>
+      </tr>
+      <tr>
+        <th>Average (ms)</th>
+        <td id="js-average"></td>
+        <td id="wasm-average"></td>
+      </tr>
+      <tr>
+        <th>Run count</th>
+        <td id="js-count"></td>
+        <td id="wasm-count"></td>
+      </tr>
+    </table>
 
     <textarea id="output"></textarea>
 
