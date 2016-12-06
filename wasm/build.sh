@@ -9,8 +9,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-~/llvm/build/bin/clang -O3 -emit-llvm -DWASM --target=wasm32 -S inflate.c
+~/llvm/build/bin/clang -emit-llvm -DWASM --target=wasm32 -S inflate.c
 ~/llvm/build/bin/llc inflate.ll -march=wasm32
 ~/binaryen/build/bin/s2wasm -o inflate.wast inflate.s
+~/binaryen/build/bin/wasm-opt -O3 -o inflate.wast inflate.wast
 ~/binaryen/build/bin/wasm-as -o inflate.wasm inflate.wast
 rm -f inflate.ll inflate.wast inflate.s
