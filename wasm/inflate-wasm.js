@@ -36,7 +36,7 @@ class InflateWasm {
           while (memory[end] !== 0) {
             end++;
           }
-          console.log(decoder.decode(memory.slice(addr, end)));
+          throw new Error(decoder.decode(memory.slice(addr, end)));
         },
         memset: (a, b, c) => {
           const memory = new Uint8Array(this.instance.exports.memory.buffer);
