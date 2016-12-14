@@ -15,11 +15,14 @@
 class InflateWasm {
   constructor(module, input) {
     let ptr = 0;
+
+    this._memory = new WebAssembly.Memory({initial: 1});
+
     const imports = {
       env: {
         // Read up to size bytes into the buffer at buf
         readInput: (buf, size) => {
-          const mem = new Uint8Array(this.instance.exports.memory.buffer, buf, size);
+          const mem = new Uint8Array(this.memory.buffer, buf, size);
           const bytes = Math.min(size, input.length - ptr);
           mem.set(input.slice(ptr, ptr + bytes));
           ptr += bytes;
@@ -28,17 +31,18 @@ class InflateWasm {
         error: addr => {
           const decoder = new TextDecoder('utf-8');
           let end = addr;
-          const memory = new Uint8Array(this.instance.exports.memory.buffer);
+          const memory = new Uint8Array(this.memory.buffer);
           while (memory[end] !== 0) {
             end++;
           }
           throw new Error(decoder.decode(memory.slice(addr, end)));
         },
         memset: (a, b, c) => {
-          const memory = new Uint8Array(this.instance.exports.memory.buffer);
+          const memory = new Uint8Array(this.memory.buffer);
           memory.fill(b, a, a + c);
           return a;
-        }
+        },
+        memory: this._memory
       }
     };
 
@@ -46,10 +50,14 @@ class InflateWasm {
     this.instance.exports.init();
   }
 
+  get memory() {
+    return this.instance.exports.memory || this._memory;
+  }
+
   read() {
     const BUFFER_SIZE = this.instance.exports.getBufferSize();
     let oPtr = this.instance.exports.getOutputBuffer();
-    let currMem = this.instance.exports.memory;
+    let currMem = this.memory;
     let buffer = new Uint8Array(currMem.buffer, oPtr, BUFFER_SIZE);
 
     const decoder = new TextDecoder('utf-8');
@@ -61,8 +69,8 @@ class InflateWasm {
     let writePos = this.instance.exports.readValues();
 
     while (!this.instance.exports.isComplete()) {
-      if (this.instance.exports.memory !== currMem) {
-        currMem = this.instance.exports.memory;
+      if (this.memory !== currMem) {
+        currMem = this.memory;
         buffer = new Uint8Array(currMem.buffer, oPtr, BUFFER_SIZE);
       }
       if (writePos < readPos) {
