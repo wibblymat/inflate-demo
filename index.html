@@ -75,41 +75,26 @@
         document.getElementById('error').style.display = 'block';
       }
     </script>
-    <div>
-      <button disabled id="js">Decompress (JavaScript)</button>
-      <button disabled id="wasm">Decompress (Web Assembly)</button>
-    </div>
-    <div>
-      <button disabled id="js1000">Decompress (JavaScript) x 1000</button>
-      <button disabled id="wasm1000">Decompress (Web Assembly) x 1000</button>
+
+    <div id="buttons-container">
     </div>
 
     <h3>Stats</h3>
     <table class="stats-table">
-      <tr>
+      <tr id="name-row">
         <th>&nbsp;</th>
-        <th>JS</th>
-        <th>WASM</th>
       </tr>
-      <tr>
+      <tr id="first-row">
         <th>First run (ms)</th>
-        <td id="js-first"></td>
-        <td id="wasm-first"></td>
       </tr>
-      <tr>
+      <tr id="last-row">
         <th>Last run (ms)</th>
-        <td id="js-last"></td>
-        <td id="wasm-last"></td>
       </tr>
-      <tr>
+      <tr id="average-row">
         <th>Average (ms)</th>
-        <td id="js-average"></td>
-        <td id="wasm-average"></td>
       </tr>
-      <tr>
+      <tr id="count-row">
         <th>Run count</th>
-        <td id="js-count"></td>
-        <td id="wasm-count"></td>
       </tr>
     </table>
 

@@ -10,88 +10,134 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
-/* global InflateJS, getWASMInflate */
+/* global WebAssembly, InflateJS, InflateWasm */
+/* eslint-disable guard-for-in */
 'use strict';
 
-const jsButton = document.getElementById('js');
-const jsButton1000 = document.getElementById('js1000');
-const jsLastOutput = document.getElementById('js-last');
-const jsFirstOutput = document.getElementById('js-first');
-const jsAverageOutput = document.getElementById('js-average');
-const jsCountOutput = document.getElementById('js-count');
-const wasmButton = document.getElementById('wasm');
-const wasmButton1000 = document.getElementById('wasm1000');
-const wasmLastOutput = document.getElementById('wasm-last');
-const wasmFirstOutput = document.getElementById('wasm-first');
-const wasmAverageOutput = document.getElementById('wasm-average');
-const wasmCountOutput = document.getElementById('wasm-count');
-
+let book;
+let wasm;
+const stats = {};
+const elements = {};
 const output = document.getElementById('output');
-let input;
+const buttonsContainer = document.getElementById('buttons-container');
+const nameRow = document.getElementById('name-row');
+const lastRow = document.getElementById('last-row');
+const firstRow = document.getElementById('first-row');
+const averageRow = document.getElementById('average-row');
+const countRow = document.getElementById('count-row');
 
-let jsTotal = 0;
-let jsCount = 0;
-let wasmTotal = 0;
-let wasmCount = 0;
+const updateStats = function(tag, taken) {
+  if (stats[tag].count === 0) {
+    stats[tag].first = taken;
+    elements[tag].first.textContent = `${taken}`;
+  }
+  stats[tag].total += taken;
+  stats[tag].count++;
 
-fetch('waroftheworlds.z')
-  .then(resp => resp.arrayBuffer())
-  .then(buf => new Uint8Array(buf))
-  .then(arr => {
-    jsButton.disabled = false;
-    jsButton1000.disabled = false;
-    wasmButton.disabled = false;
-    wasmButton1000.disabled = false;
-    input = arr;
-  });
+  elements[tag].last.textContent = `${taken}`;
+  elements[tag].average.textContent = `${stats[tag].total / stats[tag].count}`;
+  elements[tag].count.textContent = `${stats[tag].count}`;
+};
 
 const decompressJS = function() {
-  const start = performance.now();
-  const inflate = new InflateJS(input);
-  let result = inflate.read();
-  const taken = performance.now() - start;
-  if (jsCount === 0) {
-    jsFirstOutput.textContent = `${taken}`;
-  }
-  jsTotal += taken;
-  jsCount++;
-  jsLastOutput.textContent = `${taken}`;
-  jsAverageOutput.textContent = `${jsTotal / jsCount}`;
-  jsCountOutput.textContent = `${jsCount}`;
-  output.textContent = result;
+  const inflate = new InflateJS(book);
+  return inflate.read();
 };
 
 const decompressWASM = function() {
+  const inflate = new InflateWasm(wasm, book);
+  return inflate.read();
+};
+
+const versions = {
+  js: {
+    name: 'JS',
+    func: decompressJS
+  },
+  wasm: {
+    name: 'WASM (Binaryen)',
+    func: decompressWASM
+  }
+};
+
+const load = function(url) {
+  return fetch(url)
+    .then(resp => resp.arrayBuffer())
+    .then(buf => new Uint8Array(buf));
+};
+
+const run = function(tag) {
   const start = performance.now();
-  getWASMInflate(input).then(inflate => {
-    let result = inflate.read();
-    const taken = performance.now() - start;
-    if (wasmCount === 0) {
-      wasmFirstOutput.textContent = `${taken}`;
-    }
-    wasmTotal += taken;
-    wasmCount++;
-    wasmLastOutput.textContent = `${taken}`;
-    wasmAverageOutput.textContent = `${wasmTotal / wasmCount}`;
-    wasmCountOutput.textContent = `${wasmCount}`;
-    output.textContent = result;
-  });
+  let result = versions[tag].func();
+  const taken = performance.now() - start;
+  updateStats(tag, taken);
+  output.textContent = result;
 };
 
-const decompressJS1000 = function() {
-  for (let i = 0; i < 1000; i++) {
-    window.requestIdleCallback(decompressJS);
+const run100 = function(tag) {
+  for (let i = 0; i < 100; i++) {
+    window.requestIdleCallback(() => run(tag));
   }
 };
 
-const decompressWASM1000 = function() {
-  for (let i = 0; i < 1000; i++) {
-    window.requestIdleCallback(decompressWASM);
+const init = function() {
+  for (let tag in versions) {
+    let runButton = document.createElement('button');
+    runButton.textContent = `Decompress ${versions[tag].name}`;
+    runButton.disabled = true;
+    runButton.addEventListener('click', () => run(tag));
+
+    let run100Button = document.createElement('button');
+    run100Button.textContent = `Decompress ${versions[tag].name} x 100`;
+    run100Button.disabled = true;
+    run100Button.addEventListener('click', () => run100(tag));
+
+    buttonsContainer.appendChild(runButton);
+    buttonsContainer.appendChild(run100Button);
+
+    let nameCell = document.createElement('th');
+    nameCell.textContent = versions[tag].name;
+    nameRow.appendChild(nameCell);
+    let lastCell = document.createElement('td');
+    lastRow.appendChild(lastCell);
+    let firstCell = document.createElement('td');
+    firstRow.appendChild(firstCell);
+    let averageCell = document.createElement('td');
+    averageRow.appendChild(averageCell);
+    let countCell = document.createElement('td');
+    countRow.appendChild(countCell);
+
+    stats[tag] = {
+      total: 0,
+      count: 0,
+      first: 0
+    };
+
+    elements[tag] = {
+      run: runButton,
+      run100: run100Button,
+      last: lastCell,
+      first: firstCell,
+      average: averageCell,
+      count: countCell
+    };
   }
 };
 
-jsButton.addEventListener('click', decompressJS);
-jsButton1000.addEventListener('click', decompressJS1000);
-wasmButton.addEventListener('click', decompressWASM);
-wasmButton1000.addEventListener('click', decompressWASM1000);
+init();
+
+const enableButtons = function() {
+  for (let tag in versions) {
+    elements[tag].run.disabled = false;
+    elements[tag].run100.disabled = false;
+  }
+};
+
+Promise.all([
+  load('waroftheworlds.z'),
+  load('wasm/inflate.wasm').then(buf => WebAssembly.compile(buf))
+]).then(deps => {
+  [book, wasm] = deps;
+  enableButtons();
+});
 

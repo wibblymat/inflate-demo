@@ -97,10 +97,4 @@ class InflateWasm {
   }
 }
 
-const getWASMInflate = function(input) {
-  return modulePromise.then(module => {
-    return new InflateWasm(module, input);
-  });
-};
-
-window.getWASMInflate = getWASMInflate;
+window.InflateWasm = InflateWasm;
