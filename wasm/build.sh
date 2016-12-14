@@ -36,3 +36,8 @@ python `which emcc` \
   inflate.c -o \
   inflate-emscripten.js
 rm inflate-emscripten.wast inflate-emscripten.asm.js
+
+# Build 3: Hand made wast > wasm
+~/binaryen/build/bin/wasm-opt -O3 -o inflate-manual-opt.wast inflate-manual.wast
+~/binaryen/build/bin/wasm-as -o inflate-manual.wasm inflate-manual-opt.wast
+rm inflate-manual-opt.wast

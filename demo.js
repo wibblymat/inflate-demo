@@ -17,6 +17,7 @@
 let book;
 let wasm;
 let emWasm;
+let manualWasm;
 const stats = {};
 const elements = {};
 const output = document.getElementById('output');
@@ -55,6 +56,13 @@ const decompressWASM = function() {
   return inflate.read();
 };
 
+const decompressManual = function() {
+  // Call the exact same JS function as with the Binaryen WASM, just pass in the
+  // other module
+  const inflate = new InflateWasm(manualWasm, book);
+  return inflate.read();
+};
+
 const versions = {
   js: {
     name: 'JS',
@@ -67,6 +75,10 @@ const versions = {
   wasmEm: {
     name: 'WASM (Emscripten)',
     func: decompressEmscripten
+  },
+  wasmManual: {
+    name: 'WASM (Hand-written)',
+    func: decompressManual
   }
 };
 
@@ -146,9 +158,10 @@ const enableButtons = function() {
 Promise.all([
   load('waroftheworlds.z'),
   load('wasm/inflate.wasm').then(buf => WebAssembly.compile(buf)),
-  load('wasm/inflate-emscripten.wasm')
+  load('wasm/inflate-emscripten.wasm'),
+  load('wasm/inflate-manual.wasm').then(buf => WebAssembly.compile(buf))
 ]).then(deps => {
-  [book, wasm, emWasm] = deps;
+  [book, wasm, emWasm, manualWasm] = deps;
   enableButtons();
 });
 

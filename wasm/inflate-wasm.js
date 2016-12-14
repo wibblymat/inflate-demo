@@ -12,10 +12,6 @@
 */
 /* global WebAssembly */
 
-const modulePromise = fetch('wasm/inflate.wasm')
-  .then(resp => resp.arrayBuffer())
-  .then(buf => WebAssembly.compile(buf));
-
 class InflateWasm {
   constructor(module, input) {
     let ptr = 0;
