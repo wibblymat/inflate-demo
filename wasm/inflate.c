@@ -10,7 +10,12 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
+#ifdef EMSCRIPTEN
+#include <stdlib.h>
+#else
 #include "malloc.c"
+#endif
+
 typedef char bool;
 typedef unsigned char byte;
 #define true (bool)1;

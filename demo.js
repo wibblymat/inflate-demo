@@ -10,12 +10,13 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 */
-/* global WebAssembly, InflateJS, InflateWasm */
+/* global WebAssembly, InflateJS, InflateWasm, InflateEmscripten */
 /* eslint-disable guard-for-in */
 'use strict';
 
 let book;
 let wasm;
+let emWasm;
 const stats = {};
 const elements = {};
 const output = document.getElementById('output');
@@ -44,6 +45,11 @@ const decompressJS = function() {
   return inflate.read();
 };
 
+const decompressEmscripten = function() {
+  const inflate = new InflateEmscripten(emWasm, book);
+  return inflate.read();
+};
+
 const decompressWASM = function() {
   const inflate = new InflateWasm(wasm, book);
   return inflate.read();
@@ -57,6 +63,10 @@ const versions = {
   wasm: {
     name: 'WASM (Binaryen)',
     func: decompressWASM
+  },
+  wasmEm: {
+    name: 'WASM (Emscripten)',
+    func: decompressEmscripten
   }
 };
 
@@ -135,9 +145,10 @@ const enableButtons = function() {
 
 Promise.all([
   load('waroftheworlds.z'),
-  load('wasm/inflate.wasm').then(buf => WebAssembly.compile(buf))
+  load('wasm/inflate.wasm').then(buf => WebAssembly.compile(buf)),
+  load('wasm/inflate-emscripten.wasm')
 ]).then(deps => {
-  [book, wasm] = deps;
+  [book, wasm, emWasm] = deps;
   enableButtons();
 });
 
