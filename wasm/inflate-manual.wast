@@ -878,109 +878,129 @@
     (local $distance i32)
     (local $ptr i32)
     (local $i i32)
+    (local $bytesRead i32)
 
-    (if (i32.eq (get_global $blockType) (i32.const 3))
-      (call $error (get_global $invalid_block_compression_type))
-    )
-
-    (if (i32.eqz (get_global $blockType))
-      (then ;; uncompressed
-        (i32.store8
-          (i32.add
-            (get_global $OUTPUT_BUFFER)
-            (get_global $writePos)
+    (block $end
+      (loop $start
+        (br_if $end
+          (i32.ge_u
+            (get_local $bytesRead)
+            (i32.div_u
+              (get_global $BUFFER_SIZE)
+              (i32.const 2)
+            )
           )
-          (call $readInputByte)
         )
-        (set_global $writePos
-          (i32.add (get_global $writePos) (i32.const 1))
+
+        (if (i32.eq (get_global $blockType) (i32.const 3))
+          (call $error (get_global $invalid_block_compression_type))
         )
-        (set_global $blockLength
-          (i32.sub (get_global $blockLength) (i32.const 1))
-        )
-      )
-      (else ;; Huffman coding
-        (set_local $value (call $readCode (get_global $blockLengthTree)))
-        (if (i32.lt_u (get_local $value) (i32.const 256))
-          (then ;; value < 256
+
+        (if (i32.eqz (get_global $blockType))
+          (then ;; uncompressed
             (i32.store8
               (i32.add
                 (get_global $OUTPUT_BUFFER)
                 (get_global $writePos)
               )
-              (get_local $value)
+              (call $readInputByte)
             )
             (set_global $writePos
               (i32.add (get_global $writePos) (i32.const 1))
             )
+            (set_global $blockLength
+              (i32.sub (get_global $blockLength) (i32.const 1))
+            )
+            (set_local $bytesRead (i32.add (get_local $bytesRead) (i32.const 1)))
           )
-          (else
-            (if (i32.eq (get_local $value) (i32.const 256))
-              (then ;; value == 256
-                (if (get_global $blockFinal)
-                  (block
-                    (set_global $complete (i32.const 1))
-                    (return (get_global $writePos))
+          (else ;; Huffman coding
+            (set_local $value (call $readCode (get_global $blockLengthTree)))
+            (if (i32.lt_u (get_local $value) (i32.const 256))
+              (then ;; value < 256
+                (i32.store8
+                  (i32.add
+                    (get_global $OUTPUT_BUFFER)
+                    (get_global $writePos)
                   )
+                  (get_local $value)
                 )
-
-                (call $initBlock)
-                (return (call $readValues))
+                (set_global $writePos
+                  (i32.add (get_global $writePos) (i32.const 1))
+                )
+                (set_local $bytesRead (i32.add (get_local $bytesRead) (i32.const 1)))
               )
-              (else ;; otherwise (length = 257..285)
-                (set_local $length (call $codeToLength (get_local $value)))
-                (set_local $distance
-                  (call $codeToDistance
-                    (call $readCode (get_global $blockDistTree))
-                  )
-                )
-
-                (set_local $ptr
-                  (i32.rem_u
-                    (i32.sub (get_global $writePos) (get_local $distance))
-                    (get_global $BUFFER_SIZE)
-                  )
-                )
-
-                (set_local $i (i32.const 0))
-                (block $end
-                  (loop $start
-                    (br_if $end (i32.ge_u (get_local $i) (get_local $length)))
-
-                    ;; output[writePos % BUFFER_SIZE] = output[ptr % BUFFER_SIZE];
-                    (i32.store8
-                      (i32.add
-                        (get_global $OUTPUT_BUFFER)
-                        (i32.rem_u
-                          (get_global $writePos)
-                          (get_global $BUFFER_SIZE)
-                        )
-                      )
-                      (i32.load8_u
-                        (i32.add
-                          (get_global $OUTPUT_BUFFER)
-                          (i32.rem_u
-                            (get_local $ptr)
-                            (get_global $BUFFER_SIZE)
-                          )
-                        )
+              (else
+                (if (i32.eq (get_local $value) (i32.const 256))
+                  (then ;; value == 256
+                    (if (get_global $blockFinal)
+                      (block
+                        (set_global $complete (i32.const 1))
+                        (return (get_global $writePos))
                       )
                     )
 
-                    (set_local $i (i32.add (get_local $i) (i32.const 1)))
-                    (set_local $ptr (i32.add (get_local $ptr) (i32.const 1)))
-                    (set_global $writePos (i32.add (get_global $writePos) (i32.const 1)))
-                    (br $start)
+                    (call $initBlock)
+                  )
+                  (else ;; otherwise (length = 257..285)
+                    (set_local $length (call $codeToLength (get_local $value)))
+                    (set_local $distance
+                      (call $codeToDistance
+                        (call $readCode (get_global $blockDistTree))
+                      )
+                    )
+
+                    (set_local $ptr
+                      (i32.rem_u
+                        (i32.sub (get_global $writePos) (get_local $distance))
+                        (get_global $BUFFER_SIZE)
+                      )
+                    )
+
+                    (set_local $i (i32.const 0))
+                    (block $end
+                      (loop $start
+                        (br_if $end (i32.ge_u (get_local $i) (get_local $length)))
+
+                        ;; output[writePos % BUFFER_SIZE] = output[ptr % BUFFER_SIZE];
+                        (i32.store8
+                          (i32.add
+                            (get_global $OUTPUT_BUFFER)
+                            (i32.rem_u
+                              (get_global $writePos)
+                              (get_global $BUFFER_SIZE)
+                            )
+                          )
+                          (i32.load8_u
+                            (i32.add
+                              (get_global $OUTPUT_BUFFER)
+                              (i32.rem_u
+                                (get_local $ptr)
+                                (get_global $BUFFER_SIZE)
+                              )
+                            )
+                          )
+                        )
+
+                        (set_local $i (i32.add (get_local $i) (i32.const 1)))
+                        (set_local $ptr (i32.add (get_local $ptr) (i32.const 1)))
+                        (set_global $writePos (i32.add (get_global $writePos) (i32.const 1)))
+                        (br $start)
+                      )
+                    )
+
+                    (set_local $bytesRead (i32.add (get_local $bytesRead) (get_local $length)))
                   )
                 )
-
               )
             )
           )
         )
+        (set_global $writePos (i32.rem_u (get_global $writePos) (get_global $BUFFER_SIZE)))
+
+        (br $start)
       )
     )
-    (set_global $writePos (i32.rem_u (get_global $writePos) (get_global $BUFFER_SIZE)))
+
     (return (get_global $writePos))
   )
 )

@@ -74,28 +74,40 @@ class InflateWasm {
         buffer = new Uint8Array(currMem.buffer, oPtr, BUFFER_SIZE);
       }
       if (writePos < readPos) {
-        for (let i = readPos; i < BUFFER_SIZE; i++) {
-          output[outPos++] = buffer[i];
-        }
+        output.set(buffer.slice(readPos, BUFFER_SIZE), outPos);
+        outPos += (BUFFER_SIZE - readPos);
 
         outSize += BUFFER_SIZE;
         let temp = new Uint8Array(outSize);
         temp.set(output);
         output = temp;
 
-        for (let i = 0; i < writePos; i++) {
-          output[outPos++] = buffer[i];
-        }
-      } else {
-        for (let i = readPos; i < writePos; i++) {
-          output[outPos++] = buffer[i];
-        }
+        readPos = 0;
       }
+
+      output.set(buffer.slice(readPos, writePos), outPos);
+      outPos += (writePos - readPos);
 
       readPos = writePos;
 
       writePos = this.instance.exports.readValues();
     }
+
+    if (writePos < readPos) {
+      output.set(buffer.slice(readPos, BUFFER_SIZE), outPos);
+      outPos += (BUFFER_SIZE - readPos);
+
+      outSize += BUFFER_SIZE;
+      let temp = new Uint8Array(outSize);
+      temp.set(output);
+      output = temp;
+
+      readPos = 0;
+    }
+
+    output.set(buffer.slice(readPos, writePos), outPos);
+    outPos += (writePos - readPos);
+
 
     return decoder.decode(output.slice(0, outPos));
   }

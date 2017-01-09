@@ -336,41 +336,46 @@ void init() {
 }
 
 int readValues() {
-  if (blockType == 3) {
-    error("Invalid block compression type");
-  } else if (blockType == 0) { // uncompressed
-    output[writePos++] = readInputByte();
-    blockLength--;
-  } else { // Huffman coding
-    int value = readCode(blockLengthTree);
-    if (value < 256) {
-      output[writePos++] = (byte)value;
-    } else if (value == 256) {
-      if (blockFinal) {
-        complete = true;
-        // Could free these... but the module is actually now defunct, and
-        // output at least might still be read from readValues(). May as well
-        // just let the whole WASM instance be GC'd
-        // freeTree(blockLengthTree);
-        // freeTree(blockDistTree);
-        // free(output);
-        // free(input);
-        return writePos;
-      }
-      initBlock();
-      return readValues();
-    } else { // otherwise (length = 257..285)
-      int length = codeToLength(value);
-      int distance = codeToDistance(readCode(blockDistTree));
-      int ptr = writePos - distance;
-      while (ptr < 0) { // Don't just use % because JS uses signed mod
-        ptr += BUFFER_SIZE;
-      }
-      for (int i = 0; i < length; i++) {
-        output[writePos++ % BUFFER_SIZE] = output[ptr++ % BUFFER_SIZE];
+  int bytesRead = 0;
+  while (bytesRead < BUFFER_SIZE / 2) {
+    if (blockType == 3) {
+      error("Invalid block compression type");
+    } else if (blockType == 0) { // uncompressed
+      output[writePos++] = readInputByte();
+      blockLength--;
+      bytesRead++;
+    } else { // Huffman coding
+      int value = readCode(blockLengthTree);
+      if (value < 256) {
+        output[writePos++] = (byte)value;
+        bytesRead++;
+      } else if (value == 256) {
+        if (blockFinal) {
+          complete = true;
+          // Could free these... but the module is actually now defunct, and
+          // output at least might still be read from readValues(). May as well
+          // just let the whole WASM instance be GC'd
+          // freeTree(blockLengthTree);
+          // freeTree(blockDistTree);
+          // free(output);
+          // free(input);
+          return writePos;
+        }
+        initBlock();
+      } else { // otherwise (length = 257..285)
+        int length = codeToLength(value);
+        int distance = codeToDistance(readCode(blockDistTree));
+        int ptr = writePos - distance;
+        while (ptr < 0) { // Don't just use % because JS uses signed mod
+          ptr += BUFFER_SIZE;
+        }
+        for (int i = 0; i < length; i++) {
+          output[writePos++ % BUFFER_SIZE] = output[ptr++ % BUFFER_SIZE];
+        }
+        bytesRead += length;
       }
     }
+    writePos %= BUFFER_SIZE;
   }
-  writePos %= BUFFER_SIZE;
   return writePos;
 }

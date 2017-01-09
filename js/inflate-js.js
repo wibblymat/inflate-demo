@@ -234,35 +234,40 @@ class InflateJS {
   }
 
   readValues() {
-    if (this.block.type === 3) {
-      throw new Error('Invalid block compression type');
-    } else if (this.block.type === 0) { // uncompressed
-      this.output[this.writePos++] = this.readInputByte();
-      this.block.length--;
-    } else { // Huffman coding
-      const value = this.readCode(this.block.lengthTree);
-      if (value < 256) {
-        this.output[this.writePos++] = value;
-      } else if (value === 256) {
-        if (this.block.final) {
-          this.complete = true;
-          return;
-        }
-        this.initBlock();
-        return this.readValues();
-      } else { // otherwise (length = 257..285)
-        let length = this.codeToLength(value);
-        let distance = this.codeToDistance(this.readCode(this.block.distTree));
-        var ptr = this.writePos - distance;
-        while (ptr < 0) { // Don't just use % because JS uses signed mod
-          ptr += BUFFER_SIZE;
-        }
-        for (let i = 0; i < length; i++) {
-          this.output[this.writePos++ % BUFFER_SIZE] = this.output[ptr++ % BUFFER_SIZE];
+    let bytesRead = 0;
+    while (bytesRead < BUFFER_SIZE / 2) {
+      if (this.block.type === 3) {
+        throw new Error('Invalid block compression type');
+      } else if (this.block.type === 0) { // uncompressed
+        this.output[this.writePos++] = this.readInputByte();
+        this.block.length--;
+        bytesRead++;
+      } else { // Huffman coding
+        const value = this.readCode(this.block.lengthTree);
+        if (value < 256) {
+          this.output[this.writePos++] = value;
+          bytesRead++;
+        } else if (value === 256) {
+          if (this.block.final) {
+            this.complete = true;
+            return;
+          }
+          this.initBlock();
+        } else { // otherwise (length = 257..285)
+          let length = this.codeToLength(value);
+          let distance = this.codeToDistance(this.readCode(this.block.distTree));
+          var ptr = this.writePos - distance;
+          while (ptr < 0) { // Don't just use % because JS uses signed mod
+            ptr += BUFFER_SIZE;
+          }
+          for (let i = 0; i < length; i++) {
+            this.output[this.writePos++ % BUFFER_SIZE] = this.output[ptr++ % BUFFER_SIZE];
+          }
+          bytesRead += length;
         }
       }
+      this.writePos %= BUFFER_SIZE;
     }
-    this.writePos %= BUFFER_SIZE;
   }
 
   codeToLength(code) {
@@ -320,28 +325,39 @@ class InflateJS {
 
     while (!this.complete) {
       if (this.writePos < readPos) {
-        for (let i = readPos; i < BUFFER_SIZE; i++) {
-          output[outPos++] = this.output[i];
-        }
+        output.set(this.output.slice(readPos, BUFFER_SIZE), outPos);
+        outPos += (BUFFER_SIZE - readPos);
 
         outSize += BUFFER_SIZE;
         let temp = new Uint8Array(outSize);
         temp.set(output);
         output = temp;
 
-        for (let i = 0; i < this.writePos; i++) {
-          output[outPos++] = this.output[i];
-        }
-      } else {
-        for (let i = readPos; i < this.writePos; i++) {
-          output[outPos++] = this.output[i];
-        }
+        readPos = 0;
       }
+
+      output.set(this.output.slice(readPos, this.writePos), outPos);
+      outPos += (this.writePos - readPos);
 
       readPos = this.writePos;
 
       this.readValues();
     }
+
+    if (this.writePos < readPos) {
+      output.set(this.output.slice(readPos, BUFFER_SIZE), outPos);
+      outPos += (BUFFER_SIZE - readPos);
+
+      outSize += BUFFER_SIZE;
+      let temp = new Uint8Array(outSize);
+      temp.set(output);
+      output = temp;
+
+      readPos = 0;
+    }
+
+    output.set(this.output.slice(readPos, this.writePos), outPos);
+    outPos += (this.writePos - readPos);
 
     return decoder.decode(output.slice(0, outPos));
   }
